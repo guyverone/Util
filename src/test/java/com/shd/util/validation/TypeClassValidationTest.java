@@ -1,12 +1,10 @@
-package com.common.util;
+package com.shd.util.validation;
 
 
 import common.domain.finance.EnumUsedBusinessType;
 import common.domain.finance.Master;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
-import java.util.Date;
 
 /**
  * Created by suhd on 2016-07-30.
