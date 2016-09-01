@@ -34,12 +34,12 @@ public class TimestampMorpher extends AbstractObjectMorpher {
      */
 	@Override
 	public Object morph(Object value) {
-		if(!isNeedMorphProcessing(value)) {
-			return null;
-		}
-
 		if (Timestamp.class.isAssignableFrom(value.getClass())) {
 			return  value;
+		}
+
+		if(!isQualifyObjectToMorph(value)) {
+			return null;
 		}
 
 		String strValue = (String) value;
@@ -61,14 +61,14 @@ public class TimestampMorpher extends AbstractObjectMorpher {
 		return null;
 	}
 
-	private boolean isNeedMorphProcessing(Object value) {
+	private boolean isQualifyObjectToMorph(Object value) {
 		if (value == null) {
 			return false;
 		}
 		if (!supports(value.getClass())) {
 			throw new MorphException(value.getClass() + " 是不支持的类型");
 		}
-		return false;
+		return true;
 	}
 
 	@Override

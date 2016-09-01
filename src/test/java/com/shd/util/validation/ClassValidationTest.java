@@ -15,7 +15,7 @@ import java.math.BigDecimal;
 public class ClassValidationTest {
 
     @Test
-    public void testValidateFinComMaster() throws Exception  {
+    public void testValidate() throws Exception  {
         boolean flag = false;
         Master fm = new Master();
 
