@@ -11,7 +11,7 @@ import java.sql.Timestamp;
  */
 public class TimestampMorpherTest {
     private static  String dateTimePattern = "yyyy-MM-dd HH:mm:ss";
-    private static  String datePattern = "yyyy-MM-dd" ;
+    private static  String datePattern = "dd/MM/yyyy" ;
     private static  String wrongDatePattern = "yyyy-dd-ll";
 
     private TimestampMorpher dateTimePatternMorpher;
@@ -54,10 +54,18 @@ public class TimestampMorpherTest {
 
     @Test
     public void testMorphOfDatePatternType() {
-        String time = "2016-09-01 17:59:10";
+        String time = "01/09/2016 17:59:10";
         Object obj = this.datePatternMorpher.morph(time);
         Assert.assertTrue(obj instanceof Timestamp);
     }
+
+    @Test
+    public void testMorphOfDatePatternTypeWithWrongParameter() {
+        String time = "]]01/09/2016 17:59:10";
+        Object obj = this.datePatternMorpher.morph(time);
+        Assert.assertEquals(null, obj);
+    }
+
 
     @Test
     public void testMorphOfWrongDateStyle() {
