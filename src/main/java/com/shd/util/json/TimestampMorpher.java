@@ -11,12 +11,12 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 
 /**
- * 将json串中的日期字符串转换为bean中的Timestamp
+ * To convert the String type of datetime into Timestamp type of datetime
  */
 public class TimestampMorpher extends AbstractObjectMorpher {
 
 	private static Logger logger = LoggerFactory.getLogger(TimestampMorpher.class);
-	/*** 日期字符串格式 */
+	/*** datetime pattern */
 	private String[] formats;
 
 	/**
@@ -28,8 +28,8 @@ public class TimestampMorpher extends AbstractObjectMorpher {
 	}
 
 	/**
-	 *
-	 * @param value
+	 * To convert the ClassType of parameter into Timestamp
+	 * @param value time value that need to be converted to Timestamp
 	 * @return
      */
 	@Override
@@ -66,7 +66,7 @@ public class TimestampMorpher extends AbstractObjectMorpher {
 			return false;
 		}
 		if (!supports(value.getClass())) {
-			throw new MorphException(value.getClass() + " 是不支持的类型");
+			throw new MorphException(value.getClass() + " type not support, only support value which of String type.");
 		}
 		return true;
 	}
