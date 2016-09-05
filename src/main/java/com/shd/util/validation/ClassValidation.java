@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
 
 /**
  *
@@ -40,12 +42,19 @@ public class ClassValidation {
     private void doValidate(Object targetObj) throws ClassValidationException {
         Field[] targetFields = getFields(targetObj);
         EnumUsedBusinessType usedBusinessType = getUsedBusinessType(targetFields, targetObj);
+        /**
+         * validation support for validating Collection which inside one Class.  added 2016-9-3
+         */
         for(int i=0; i<targetFields.length; i++) {
-            Annotation[] targetAnnotations = getAnnotations(targetFields[i]);
-            for(int j=0; j<targetAnnotations.length; j++) {
-                checkNotEmpty(usedBusinessType, targetFields[i], targetAnnotations[j], targetObj);
-                checkGreater(targetFields[i], targetAnnotations[j], targetObj);
-                checkGreaterOrEqual(targetFields[i], targetAnnotations[j], targetObj);
+            Object retObj = getFieldValue(targetFields[i], targetObj);
+            if(retObj instanceof Collection) {
+                Collection c = (Collection)retObj;
+                Iterator it = c.iterator();
+                while(it.hasNext()) {
+                    this.doValidate(it.next());
+                }
+            }else {
+                validateAtomicAnnotationField(targetFields[i], targetObj, usedBusinessType);
             }
         }
     }
@@ -60,7 +69,7 @@ public class ClassValidation {
                 return (EnumUsedBusinessType)getFieldValue(targetFields[i], targetObj);
             }
         }
-        throw new ClassValidationException("Validation for validating the Class which contains property type of UsedBusinessType");
+        return null;
     }
 
     private Object getFieldValue(Field targetField, Object targetObj) throws ClassValidationException {
@@ -73,24 +82,98 @@ public class ClassValidation {
         }
     }
 
+    private void validateAtomicAnnotationField(Field targetField, Object targetObj, EnumUsedBusinessType usedBusinessType) throws ClassValidationException {
+        Annotation[] targetAnnotations = getAnnotations(targetField);
+        for(int j=0; j<targetAnnotations.length; j++) {
+            checkNotEmpty(usedBusinessType, targetField, targetAnnotations[j], targetObj);
+            checkGreater(targetField, targetAnnotations[j], targetObj);
+            checkGreaterOrEqual(targetField, targetAnnotations[j], targetObj);
+        }
+    }
+
     private Annotation[] getAnnotations(Field targetField) {
         return targetField.getAnnotations();
     }
 
-    private boolean checkNotEmpty(EnumUsedBusinessType usedBusinessType, Field targetField, Annotation targetAnnotation, Object targetObj) throws ClassValidationException {
+    private void checkNotEmpty(EnumUsedBusinessType usedBusinessType, Field targetField, Annotation targetAnnotation, Object targetObj) throws ClassValidationException {
         if(targetAnnotation != null && targetAnnotation instanceof NotEmpty) {
-            //no specify parameter, then the value must be not empty.
-            if(EnumUsedBusinessType.EMPTY.getType().equals((targetField.getAnnotation(NotEmpty.class).value()[0]).getType())) {
-                checkFieldValueNullOrEmpty(targetField, targetObj);
-                return false;
-            }
-            //only the specifies type of EnumUsedBusinessType of Master will be validating.
-            if(usedBusinessType.getType().equals((targetField.getAnnotation(NotEmpty.class).value()[0]).getType())) {
-                checkFieldValueNullOrEmpty(targetField, targetObj);
-                return false;
-            }
+            this.doCheckNotEmpty(usedBusinessType, targetField, targetObj);
+        }
+    }
+
+    private void doCheckNotEmpty(EnumUsedBusinessType usedBusinessType, Field targetField, Object targetObj) throws ClassValidationException {
+        EnumUsedBusinessType[] value = targetField.getAnnotation(NotEmpty.class).value();
+        EnumUsedBusinessType[] exclusion = targetField.getAnnotation(NotEmpty.class).exclusion();
+
+        //if the EnumUsedBusinessType type is Not specific(EnumUsedBusinessType is empty), then validates it.
+        if(!doValidateField(value, exclusion, usedBusinessType, targetField, targetObj)) {
+            return;
+        }
+
+        //if there's a exclusion, then exit.
+        if(isExclusion(exclusion, usedBusinessType)) {
+            return;
+        }
+        //validating the specific type
+        doValidateSpecificField(value, usedBusinessType, targetField, targetObj);
+    }
+
+    private boolean doValidateField(EnumUsedBusinessType[] value, EnumUsedBusinessType[] exclusion, EnumUsedBusinessType usedBusinessType, Field targetField, Object targetObj) throws ClassValidationException {
+        /**
+         * when <such as：@NotEmpty> not specify the EnumUsedBusinessType type，then do validate all of types.
+         * case 1: value[] has only one default value of empty and exclusion[] has only one default value of empty either, that means there's no specific EnumUsedBusinessType type.
+         */
+        if((value.length==1 && EnumUsedBusinessType.EMPTY.getType().equals(value[0].getType()))
+                && (exclusion.length==1 && EnumUsedBusinessType.EMPTY.getType().equals(exclusion[0].getType()))) {
+            checkFieldValueNullOrEmpty(targetField, targetObj);
+            return false;
+        }
+        /**
+         * when <such as：@NotEmpty> not specify the EnumUsedBusinessType type，then do validate all of types.
+         * case 2: the value of usedBusinessType if null means that do validate all of types. That will ignore the specific type defined in @NotEmpty.
+         */
+        if(usedBusinessType==null) {
+            checkFieldValueNullOrEmpty(targetField, targetObj);
+            return false;
         }
         return true;
+    }
+
+    /**
+     * when <such as：@NotEmpty(exclusion=EnumUsedBusinessType.SALE)> exclusion value is set, then that type(EnumUsedBusinessType.SALE) won't be to do validating. caution: when conflict appear, exclusion will do the charge.
+     */
+    private boolean isExclusion(EnumUsedBusinessType[] exclusion, EnumUsedBusinessType usedBusinessType) throws ClassValidationException {
+        for(int i=0; i<exclusion.length; i++) {
+            checkUsedBusinessType(usedBusinessType);
+            if(exclusion[i].getType().equals(usedBusinessType.getType())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * validating <such as：@NotEmpty(EnumUsedBusinessType.SALE)> the specific EnumUsedBusinessType type.
+     */
+    private void doValidateSpecificField(EnumUsedBusinessType[] value, EnumUsedBusinessType usedBusinessType, Field targetField, Object targetObj) throws ClassValidationException {
+        for(int i=0; i<value.length; i++) {
+            checkUsedBusinessType(usedBusinessType);
+            if(value[i].getType().equals(usedBusinessType.getType())) {
+                checkFieldValueNullOrEmpty(targetField, targetObj);
+                return;
+            }
+        }
+    }
+
+    /**
+     * if this method called, then the field of the Class must be used of EnumUsedBusinessType type
+     * @param usedBusinessType
+     * @throws Exception
+     */
+    private void checkUsedBusinessType(EnumUsedBusinessType usedBusinessType) throws ClassValidationException{
+        if(usedBusinessType == null) {
+            throw new ClassValidationException("as long as the field used EnumUsedBusinessType, then the value of usedBusinessType must be set.");
+        }
     }
 
     private void checkFieldValueNullOrEmpty(Field targetField, Object targetObj) throws ClassValidationException {
