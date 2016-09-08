@@ -1,6 +1,7 @@
 package com.shd.util.validation;
 
 
+import com.shd.exception.ClassValidationException;
 import common.domain.finance.EnumUsedBusinessType;
 import common.domain.finance.Master;
 import org.junit.Assert;
@@ -393,5 +394,15 @@ public class ClassValidationTest {
         fm.setTaxRate(new BigDecimal(-1));
         boolean flag = returnFlag(fm);
         Assert.assertEquals(false, flag);
+    }
+
+    @Test(expected = ClassValidationException.class)
+    /**
+     * taxRate is need to be greater than zero with annotation @Greater
+     * input value of -1, throw exception of ClassValidationException.
+     */
+    public void testValidateGreaterOrEqualWithValueNegativeOneExpectedExceptionVersion() throws Exception{
+        fm.setTaxRate(new BigDecimal(-1));
+        ClassValidation.validate(fm);
     }
 }
