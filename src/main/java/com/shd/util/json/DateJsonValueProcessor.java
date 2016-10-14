@@ -11,7 +11,7 @@ import java.util.Arrays;
 
 
 /**
- * 将Bean中的Timestamp转换为json中的日期字符串
+ * Converting Timestamp type of datetime to specific String format of datetime.
  */
 public class DateJsonValueProcessor implements JsonValueProcessor {
 	public static final String DEFAULT_DATE_PATTERN = "yyyy-MM-dd";
